@@ -1,16 +1,28 @@
-# Flutter
+# Gemila
 
-A new Flutter project.
+A Gemini browser written in Flutter for Android.
 
-## Getting Started
+First release. Full spec isn't implemented yet, but good enough for reading.
 
-This project is a starting point for a Flutter application.
+## Screenshot 
+<!-- ![Screenshot](/Screenshot.png) -->
+<img src="Screenshot.png" width="400">
 
-A few resources to get you started if this is your first Flutter project:
+## What works
+* [x] Enter URL.
+* [x] Render text.
+* [x] Render H1, H2, H3, and lists.
+* [x] Follow links.
+* [x] Handle redirects.
+* [x] Back button goes to previous page.
 
-- [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://flutter.dev/docs/cookbook)
+## TODO
+* [ ] Pass client torture test.
+* [ ] Dark mode.
+* [ ] Bookmarks.
+* [ ] History.
+* [ ] Save for offline.
 
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## LICENSE
+GPLv3
+
