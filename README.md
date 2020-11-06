@@ -9,15 +9,12 @@ First release. Full spec isn't implemented yet, but good enough for reading.
 <img src="Screenshot.png" width="400">
 
 ## What works
-* [x] Enter URL.
-* [x] Render text.
-* [x] Render H1, H2, H3, and lists.
-* [x] Follow links.
-* [x] Handle redirects.
-* [x] Back button goes to previous page.
+* Passes most of client torture test.  
+  What remains is handling invalid server responses.
+* Renders all of the line types specified in https://gemini.circumlunar.space/docs/specification.html
+
 
 ## TODO
-* [ ] Pass client torture test.
 * [ ] Dark mode.
 * [ ] Bookmarks.
 * [ ] History.

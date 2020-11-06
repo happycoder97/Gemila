@@ -1,164 +1,11 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'dart:convert';
-import 'package:permission_handler/permission_handler.dart';
+import 'gemini.dart';
+import 'gemini_parser.dart';
 
 void main() {
   runApp(MyApp());
-}
-
-enum ItemType { H1, H2, Text, ListItem, Link }
-
-abstract class GeminiItem {
-  TextSpan toTextSpan();
-}
-
-class GeminiH1 implements GeminiItem {
-  String value;
-  static GeminiH1 tryParse(String rawValue) {
-    if (rawValue.startsWith("# ")) {
-      GeminiH1 h1 = GeminiH1();
-      h1.value = rawValue.substring(1).trim();
-      return h1;
-    }
-    return null;
-  }
-
-  TextSpan toTextSpan() {
-    return TextSpan(
-      text: this.value,
-      style: TextStyle(
-        color: Colors.black,
-        fontWeight: FontWeight.bold,
-        fontSize: 18,
-      ),
-    );
-  }
-}
-
-class GeminiH2 implements GeminiItem {
-  String value;
-  static GeminiH2 tryParse(String rawValue) {
-    if (rawValue.startsWith("## ")) {
-      GeminiH2 h2 = GeminiH2();
-      h2.value = rawValue.substring(2).trim();
-      return h2;
-    }
-    return null;
-  }
-
-  TextSpan toTextSpan() {
-    return TextSpan(
-      text: this.value,
-      style: TextStyle(
-        color: Colors.black,
-        fontWeight: FontWeight.bold,
-        fontSize: 14,
-      ),
-    );
-  }
-}
-
-class GeminiH3 implements GeminiItem {
-  String value;
-  static GeminiH3 tryParse(String rawValue) {
-    if (rawValue.startsWith("### ")) {
-      GeminiH3 h3 = GeminiH3();
-      h3.value = rawValue.substring(3).trim();
-      return h3;
-    }
-    return null;
-  }
-
-  TextSpan toTextSpan() {
-    return TextSpan(
-      text: this.value,
-      style: TextStyle(
-        color: Colors.black,
-        fontWeight: FontWeight.bold,
-        fontSize: 12,
-      ),
-    );
-  }
-}
-
-class GeminiListItem implements GeminiItem {
-  String value;
-  static GeminiListItem tryParse(String rawValue) {
-    if (rawValue.startsWith("* ")) {
-      GeminiListItem g = GeminiListItem();
-      g.value = rawValue.substring(1).trim();
-      return g;
-    }
-    return null;
-  }
-
-  TextSpan toTextSpan() {
-    return TextSpan(
-      text: "• " + this.value,
-      style: TextStyle(color: Colors.black),
-    );
-  }
-}
-
-class GeminiLink implements GeminiItem {
-  String link;
-  String text;
-  void Function(String) handler;
-  static GeminiLink tryParse(
-      String rawValue, void Function(String link) linkHandler) {
-    if (rawValue.startsWith("=> ")) {
-      GeminiLink g = GeminiLink();
-      g.handler = linkHandler;
-      final value = rawValue.substring(2).trim();
-      final spIdx = value.indexOf(RegExp(r"\s+"));
-      if (spIdx >= 0) {
-        g.link = value.substring(0, spIdx);
-        g.text = value.substring(spIdx + 1);
-      } else {
-        g.link = value;
-        g.text = value;
-      }
-      return g;
-    }
-    return null;
-  }
-
-  TextSpan toTextSpan() {
-    final recognizer = TapGestureRecognizer();
-    recognizer.onTap = () {
-      this.handler(this.link);
-    };
-    return TextSpan(
-      text: this.text,
-      style:
-          TextStyle(color: Colors.black, decoration: TextDecoration.underline),
-      recognizer: recognizer,
-      children: [
-        TextSpan(
-          text: "\n" + this.link + "\n",
-          style: TextStyle(color: Colors.grey, fontSize: 10),
-        ),
-      ],
-    );
-  }
-}
-
-class GeminiText implements GeminiItem {
-  String value;
-  static GeminiText tryParse(String rawValue) {
-    GeminiText g = GeminiText();
-    g.value = rawValue;
-    return g;
-  }
-
-  TextSpan toTextSpan() {
-    return TextSpan(
-      text: this.value,
-      style: TextStyle(color: Colors.black),
-    );
-  }
 }
 
 class MyApp extends StatelessWidget {
@@ -207,155 +54,134 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  String _state = "";
+  String _status = "";
   String _respStatus = "";
   List<GeminiItem> _content;
-  String _currentUrl;
-  final urlController =
+  final _urlController =
       TextEditingController(text: "gemini://gemini.circumlunar.space/");
-  List<String> urlStack = [];
-  bool isBackAction = false;
+  List<Uri> _uriStack = [];
+  Uri _pageUri;
+  int _redirectCount = 0;
+
+  void _pushToUriStack(Uri uri) {
+    if (!uri.isAbsolute) {
+      uri = _pageUri.resolveUri(uri);
+    }
+    _uriStack.add(uri);
+  }
+
+  void _handleLink(String link) async {
+    setState(() {
+      Uri uri = Uri.parse(link);
+      _pushToUriStack(uri);
+    });
+    _load();
+  }
+
+  void _setStatus(String status) {
+    setState(() {
+      _status = status;
+    });
+  }
+
+  void _go() async {
+    Uri uri = Uri.parse(_urlController.text);
+    _pushToUriStack(uri);
+    _load();
+  }
 
   void _load() async {
+    if (_uriStack.length < 1) {
+      _setStatus("No URL to load.");
+      return;
+    }
+
     setState(() {
-      _state = "Connecting..";
+      _respStatus = "";
     });
-    final hostEndIdx = urlController.text.indexOf("/", "gemini://".length);
-    final hostName =
-        urlController.text.substring("gemini://".length, hostEndIdx);
+
+    Uri uri = _uriStack.last;
+    _setStatus("Connecting..");
+    if (!uri.hasScheme) uri = uri.replace(scheme: "gemini");
+
+    setState(() {
+      Uri uriWithoutPort = uri;
+      if (uri.isScheme("gemini") && uri.port == 1965) {
+        uriWithoutPort = uri.replace(port: null);
+      }
+      _urlController.text = uriWithoutPort.toString();
+    });
+
+    if (!uri.isScheme("gemini")) {
+      _setStatus("Cannot load non gemini URLs.");
+      _uriStack.removeLast();
+      return;
+    }
+    if (!uri.hasPort) uri = uri.replace(port: 1965);
 
     final socket = await SecureSocket.connect(
-      hostName,
-      1965,
+      uri.host,
+      uri.port,
+      // TODO implement TOFU
       onBadCertificate: (cert) {
         return true;
       },
     );
-    setState(() {
-      _state = "Sending request..";
-    });
-    socket.write(urlController.text + "\r\n");
 
-    setState(() {
-      _state = "Receiving data..";
-    });
+    _setStatus("Sending request..");
+    socket.write(uri.toString() + "\r\n");
+
+    _setStatus("Receiving data..");
     List<int> buffer = [];
     await for (var b in socket) {
       buffer.addAll(b);
     }
-    setState(() {
-      _state = "Decoding utf8..";
-    });
+
+    _setStatus("Decoding utf8..");
     String s = utf8.decode(buffer, allowMalformed: true);
-    setState(() {
-      _state = "Rendering..";
-    });
+
     setState(() {
       _content = [];
     });
     final lines = s.split("\n");
+
     final respStatus = lines.removeAt(0);
     if (respStatus.startsWith("3")) {
-      _state = "Redirecting..";
-      urlController.text = respStatus.split(r"\s+")[1];
+      if (_redirectCount > 5) {
+        _setStatus("Redirect limit reached.");
+        return;
+      }
+      _redirectCount += 1;
+      _status = "Redirecting.. ($_redirectCount)";
+
+      List<String> statusComponents = respStatus.split(RegExp(r"\s+"));
+      print(statusComponents);
+      String uriStr = statusComponents[1];
+      Uri uri = Uri.parse(uriStr);
+
+      _uriStack.removeLast();
+      _pushToUriStack(uri);
+
       _load();
       return;
     }
+    _redirectCount = 0;
+
     setState(() {
       _respStatus = respStatus;
-      if (_currentUrl != null && !isBackAction) {
-        urlStack.add(_currentUrl);
-        isBackAction = false;
-      }
-      _currentUrl = urlController.text;
+      _pageUri = uri;
     });
-    for (final line in lines) {
-      GeminiItem item;
 
-      item = GeminiH1.tryParse(line);
-      if (item != null) {
-        setState(() {
-          _content.add(item);
-        });
-        continue;
-      }
+    _setStatus("Rendering..");
+    GeminiParser().parse(lines, (item) => _content.add(item), _handleLink);
 
-      item = GeminiH2.tryParse(line);
-      if (item != null) {
-        setState(() {
-          _content.add(item);
-        });
-        continue;
-      }
-
-      item = GeminiH3.tryParse(line);
-      if (item != null) {
-        setState(() {
-          _content.add(item);
-        });
-        continue;
-      }
-
-      item = GeminiListItem.tryParse(line);
-      if (item != null) {
-        setState(() {
-          _content.add(item);
-        });
-        continue;
-      }
-
-      item = GeminiLink.tryParse(line, (link) {
-        setState(() {
-          if (link.startsWith("gemini://")) {
-            urlController.text = link;
-            return;
-          }
-          if (link.startsWith("/")) {
-            final hostEndIdx = _currentUrl.indexOf("/", "gemini://".length);
-            final base = _currentUrl.substring(0, hostEndIdx);
-            print("Base: ");
-            print(base);
-            print("Link:");
-            print(link);
-            urlController.text = base + link;
-          }
-          if (link.startsWith(RegExp(r"[a-z]+://"))) {
-            return;
-          }
-
-          if (urlController.text.endsWith("/")) {
-            urlController.text += link;
-          } else {
-            urlController.text += "/" + link;
-          }
-        });
-        _load();
-      });
-      if (item != null) {
-        setState(() {
-          _content.add(item);
-        });
-        continue;
-      }
-
-      item = GeminiText.tryParse(line);
-      if (item != null) {
-        setState(() {
-          _content.add(item);
-        });
-        continue;
-      }
-    }
-    setState(() {
-      _state = "Loaded.";
-    });
+    _setStatus("Loaded.");
     socket.close();
   }
 
   Future<bool> _handleBackButton() async {
-    if (urlStack.isEmpty) return true;
-    urlController.text = urlStack.removeLast();
-    isBackAction = true;
+    if (_uriStack.length <= 1) return true;
+    _uriStack.removeLast();
     _load();
     return false;
   }
@@ -363,7 +189,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void dispose() {
     // Clean up the controller when the widget is disposed.
-    urlController.dispose();
+    _urlController.dispose();
     super.dispose();
   }
 
@@ -374,11 +200,9 @@ class _MyHomePageState extends State<MyHomePage> {
     if (_content == null) {
       geminiTexts = [Text("No page loaded")];
     } else {
-      geminiTexts = _content.map((geminiItem) {
-        return RichText(
-          text: geminiItem.toTextSpan(),
-        );
-      }).toList(growable: false);
+      geminiTexts = _content
+          .map((geminiItem) => geminiItem.toWidget())
+          .toList(growable: false);
     }
 
     return WillPopScope(
@@ -393,11 +217,10 @@ class _MyHomePageState extends State<MyHomePage> {
                 padding: EdgeInsets.all(5),
                 child: Row(
                   children: [
-                    Expanded(child: TextField(controller: urlController)),
+                    Expanded(child: TextField(controller: _urlController)),
                     Padding(
                       padding: EdgeInsets.only(left: 5),
-                      child:
-                          ElevatedButton(child: Text("Go"), onPressed: _load),
+                      child: ElevatedButton(child: Text("Go"), onPressed: _go),
                     ),
                   ],
                 ),
@@ -419,7 +242,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 padding: EdgeInsets.all(5),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [Text('$_state'), Text('$_respStatus')],
+                  children: [Text('$_status'), Text('$_respStatus')],
                 ),
               ),
             ],
