@@ -1,4 +1,5 @@
-import 'package:flutter/gestures.dart';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
@@ -98,6 +99,7 @@ class GeminiLink implements GeminiItem {
   String link;
   String text;
   void Function(String) handler;
+
   static GeminiLink tryParse(
       String rawValue, void Function(String link) linkHandler) {
     if (rawValue.startsWith("=>")) {
@@ -117,23 +119,65 @@ class GeminiLink implements GeminiItem {
     return null;
   }
 
-  Widget toWidget() {
-    final recognizer = TapGestureRecognizer();
-    recognizer.onTap = () {
-      this.handler(this.link);
-    };
-    return RichText(
-      text: TextSpan(
-        text: this.text,
-        style: TextStyle(
-            color: Colors.black, decoration: TextDecoration.underline),
-        recognizer: recognizer,
-        children: [
-          TextSpan(
-            text: "\n" + this.link + "\n",
-            style: TextStyle(color: Colors.grey, fontSize: 10),
+  Widget toWidget() =>
+      GeminiLinkWidget(link: this.link, text: this.text, handler: this.handler);
+}
+
+class GeminiLinkWidget extends StatefulWidget {
+  final String link;
+  final String text;
+  final void Function(String) handler;
+
+  const GeminiLinkWidget({Key key, this.link, this.text, this.handler})
+      : super(key: key);
+
+  @override
+  _GeminiLinkWidgetState createState() => _GeminiLinkWidgetState();
+}
+
+class _GeminiLinkWidgetState extends State<GeminiLinkWidget> {
+  bool _isTapping = false;
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _isTapping = true;
+        });
+        widget.handler(widget.link);
+        Timer(
+          new Duration(milliseconds: 200),
+          () => setState(() {
+            _isTapping = false;
+          }),
+        );
+      },
+      onTapDown: (_details) => setState(() {
+        _isTapping = true;
+      }),
+      onTapUp: (_details) => setState(() {
+        _isTapping = false;
+      }),
+      onTapCancel: () => setState(() {
+        _isTapping = false;
+      }),
+      child: Container(
+        decoration: BoxDecoration(
+          color: _isTapping ? Colors.grey[200] : Colors.transparent,
+        ),
+        child: RichText(
+          text: TextSpan(
+            text: widget.text,
+            style: TextStyle(
+                color: Colors.black, decoration: TextDecoration.underline),
+            children: [
+              TextSpan(
+                text: "\n" + widget.link + "\n",
+                style: TextStyle(color: Colors.grey, fontSize: 10),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
