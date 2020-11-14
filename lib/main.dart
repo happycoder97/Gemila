@@ -211,7 +211,7 @@ class _MyHomePageState extends State<MyHomePage> {
         body: SafeArea(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
               Padding(
                 padding: EdgeInsets.all(5),
@@ -231,7 +231,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     padding: EdgeInsets.all(5),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: geminiTexts,
                     ),
                   ),

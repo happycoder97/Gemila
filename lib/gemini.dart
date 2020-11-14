@@ -199,11 +199,22 @@ class GeminiQuote implements GeminiItem {
   }
 
   Widget toWidget() {
-    return Text(
-      this.value,
-      style: TextStyle(
-        color: Colors.black,
-        backgroundColor: Colors.grey,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
+      child: Container(
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Text(
+            this.value,
+            style: TextStyle(
+              color: Colors.black,
+              // backgroundColor: Colors.grey[200],
+            ),
+          ),
+        ),
+        decoration: BoxDecoration(
+            color: Colors.grey[200],
+            border: Border(left: BorderSide(color: Colors.black87, width: 2))),
       ),
     );
   }
