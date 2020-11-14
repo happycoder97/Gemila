@@ -172,7 +172,7 @@ class _GeminiLinkWidgetState extends State<GeminiLinkWidget> {
                 color: Colors.black, decoration: TextDecoration.underline),
             children: [
               TextSpan(
-                text: "\n" + widget.link + "\n",
+                text: "\n" + widget.link,
                 style: TextStyle(color: Colors.grey, fontSize: 10),
               ),
             ],
