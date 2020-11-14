@@ -22,6 +22,18 @@ class GeminiParser {
         continue;
       }
 
+      if (!(item is GeminiQuote)) {
+        item = GeminiQuote.tryParse(line);
+        if (item != null) {
+          itemCallback(item);
+          continue;
+        }
+      } else {
+        if ((item as GeminiQuote).tryParseAndAppend(line)) {
+          continue;
+        }
+      }
+
       // Note: It has to be in this order H3 -> H2 -> H1
       // Because H1 will match for H2 and H3 also.
 

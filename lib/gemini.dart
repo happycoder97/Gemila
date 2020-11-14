@@ -242,6 +242,14 @@ class GeminiQuote implements GeminiItem {
     return null;
   }
 
+  bool tryParseAndAppend(String rawValue) {
+    if (rawValue.startsWith(">")) {
+      this.value += "\n" + rawValue.substring(1).trim();
+      return true;
+    }
+    return false;
+  }
+
   Widget toWidget() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
