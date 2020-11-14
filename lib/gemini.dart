@@ -79,7 +79,7 @@ class GeminiH3 implements GeminiItem {
 class GeminiListItem implements GeminiItem {
   String value;
   static GeminiListItem tryParse(String rawValue) {
-    if (rawValue.startsWith("*")) {
+    if (rawValue.startsWith("* ")) {
       GeminiListItem g = GeminiListItem();
       g.value = rawValue.substring(1).trim();
       return g;
