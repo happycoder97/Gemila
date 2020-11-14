@@ -9,13 +9,11 @@ class GeminiParser {
     GeminiItem item;
     for (final line in lines) {
       if (!(item is GeminiPre) && GeminiPre.matchOpening(line)) {
-        print("Start pre: $line");
         item = GeminiPre([]);
         continue;
       }
       if (item is GeminiPre) {
         if (GeminiPre.matchClosing(line)) {
-          print("End pre: $line");
           itemCallback(item);
           item = null;
           continue;
