@@ -186,7 +186,7 @@ class GeminiQuote implements GeminiItem {
   static GeminiQuote tryParse(String rawValue) {
     if (rawValue.startsWith(">")) {
       GeminiQuote g = GeminiQuote();
-      g.value = rawValue;
+      g.value = rawValue.substring(1).trim();
       return g;
     }
     return null;
