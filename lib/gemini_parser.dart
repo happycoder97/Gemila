@@ -22,7 +22,10 @@ class GeminiParser {
         continue;
       }
 
-      item = GeminiH1.tryParse(line);
+      // Note: It has to be in this order H3 -> H2 -> H1
+      // Because H1 will match for H2 and H3 also.
+
+      item = GeminiH3.tryParse(line);
       if (item != null) {
         itemCallback(item);
         continue;
@@ -34,7 +37,7 @@ class GeminiParser {
         continue;
       }
 
-      item = GeminiH3.tryParse(line);
+      item = GeminiH1.tryParse(line);
       if (item != null) {
         itemCallback(item);
         continue;

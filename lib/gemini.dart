@@ -8,7 +8,7 @@ abstract class GeminiItem {
 class GeminiH1 implements GeminiItem {
   String value;
   static GeminiH1 tryParse(String rawValue) {
-    if (rawValue.startsWith("# ")) {
+    if (rawValue.startsWith("#")) {
       GeminiH1 h1 = GeminiH1();
       h1.value = rawValue.substring(1).trim();
       return h1;
@@ -31,7 +31,7 @@ class GeminiH1 implements GeminiItem {
 class GeminiH2 implements GeminiItem {
   String value;
   static GeminiH2 tryParse(String rawValue) {
-    if (rawValue.startsWith("## ")) {
+    if (rawValue.startsWith("##")) {
       GeminiH2 h2 = GeminiH2();
       h2.value = rawValue.substring(2).trim();
       return h2;
@@ -54,7 +54,7 @@ class GeminiH2 implements GeminiItem {
 class GeminiH3 implements GeminiItem {
   String value;
   static GeminiH3 tryParse(String rawValue) {
-    if (rawValue.startsWith("### ")) {
+    if (rawValue.startsWith("###")) {
       GeminiH3 h3 = GeminiH3();
       h3.value = rawValue.substring(3).trim();
       return h3;
@@ -77,7 +77,7 @@ class GeminiH3 implements GeminiItem {
 class GeminiListItem implements GeminiItem {
   String value;
   static GeminiListItem tryParse(String rawValue) {
-    if (rawValue.startsWith("* ")) {
+    if (rawValue.startsWith("*")) {
       GeminiListItem g = GeminiListItem();
       g.value = rawValue.substring(1).trim();
       return g;
@@ -99,7 +99,7 @@ class GeminiLink implements GeminiItem {
   void Function(String) handler;
   static GeminiLink tryParse(
       String rawValue, void Function(String link) linkHandler) {
-    if (rawValue.startsWith("=> ")) {
+    if (rawValue.startsWith("=>")) {
       GeminiLink g = GeminiLink();
       g.handler = linkHandler;
       final value = rawValue.substring(2).trim();
@@ -184,7 +184,7 @@ class GeminiPre implements GeminiItem {
 class GeminiQuote implements GeminiItem {
   String value;
   static GeminiQuote tryParse(String rawValue) {
-    if (rawValue.startsWith("> ")) {
+    if (rawValue.startsWith(">")) {
       GeminiQuote g = GeminiQuote();
       g.value = rawValue;
       return g;
