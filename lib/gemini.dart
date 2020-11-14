@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 abstract class GeminiItem {
   Widget toWidget();
@@ -165,18 +166,23 @@ class GeminiPre implements GeminiItem {
 
   Widget toWidget() {
     // return Text(lines[0], style: TextStyle(color: Colors.red));
-    return Column(
-      children: lines
-          .map(
-            (line) => Text(
-              line,
-              style: TextStyle(
-                color: Colors.black,
-                fontFamily: "monospace",
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: lines
+            .map(
+              (line) => Text(
+                line,
+                style: TextStyle(
+                  color: Colors.black,
+                  fontFamily: "monospace",
+                ),
               ),
-            ),
-          )
-          .toList(),
+            )
+            .toList(),
+      ),
     );
   }
 }
