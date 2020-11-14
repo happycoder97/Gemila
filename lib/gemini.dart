@@ -161,12 +161,12 @@ class _GeminiLinkWidgetState extends State<GeminiLinkWidget> {
       onTapCancel: () => setState(() {
         _isTapping = false;
       }),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
-        child: Container(
-          decoration: BoxDecoration(
-            color: _isTapping ? Colors.grey[200] : Colors.transparent,
-          ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: _isTapping ? Colors.grey[200] : Colors.transparent,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(0, 4, 0, 4),
           child: RichText(
             text: TextSpan(
               text: widget.text,
