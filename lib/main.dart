@@ -62,6 +62,8 @@ class _MyHomePageState extends State<MyHomePage> {
   List<Uri> _uriStack = [];
   Uri _pageUri;
   int _redirectCount = 0;
+  FocusNode _uriFieldFocusNode;
+  bool _isUriFieldFocused = false;
 
   void _pushToUriStack(Uri uri) {
     if (!uri.isAbsolute) {
@@ -84,8 +86,8 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  void _go() async {
-    Uri uri = Uri.parse(_urlController.text);
+  void _go(uriText) async {
+    Uri uri = Uri.parse(uriText);
     _pushToUriStack(uri);
     _load();
   }
@@ -187,8 +189,25 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _uriFieldFocusNode = FocusNode();
+    _uriFieldFocusNode.addListener(() {
+      setState(() {
+        _isUriFieldFocused = _uriFieldFocusNode.hasFocus;
+        if (!_isUriFieldFocused &&
+            _urlController.text.isEmpty &&
+            _pageUri != null) {
+          _urlController.text = _pageUri.toString();
+        }
+      });
+    });
+  }
+
+  @override
   void dispose() {
     // Clean up the controller when the widget is disposed.
+    _uriFieldFocusNode.dispose();
     _urlController.dispose();
     super.dispose();
   }
@@ -205,6 +224,9 @@ class _MyHomePageState extends State<MyHomePage> {
           .toList(growable: false);
     }
 
+    bool refreshOrGo =
+        _pageUri != null && _pageUri.toString() == _urlController.text;
+
     return WillPopScope(
       onWillPop: _handleBackButton,
       child: Scaffold(
@@ -217,25 +239,78 @@ class _MyHomePageState extends State<MyHomePage> {
                 padding: EdgeInsets.all(5),
                 child: Row(
                   children: [
-                    Expanded(child: TextField(controller: _urlController)),
-                    Padding(
-                      padding: EdgeInsets.only(left: 5),
-                      child: ElevatedButton(child: Text("Go"), onPressed: _go),
+                    Expanded(
+                      child: TextField(
+                        controller: _urlController,
+                        keyboardType: TextInputType.url,
+                        textInputAction: TextInputAction.go,
+                        decoration: InputDecoration(
+                          isDense: true,
+                          contentPadding: EdgeInsets.fromLTRB(10, 12, 10, 12),
+                          border: OutlineInputBorder(
+                            borderSide: BorderSide.none,
+                            borderRadius: BorderRadius.all(Radius.circular(8)),
+                          ),
+                          fillColor: Colors.grey[300],
+                          filled: true,
+                          suffixIcon: _isUriFieldFocused
+                              ? IconButton(
+                                  icon: Icon(Icons.clear),
+                                  onPressed: () => setState(() {
+                                    _urlController.clear();
+                                  }),
+                                )
+                              : IconButton(
+                                  icon: Icon(refreshOrGo
+                                      ? Icons.refresh
+                                      : Icons.arrow_forward),
+                                  onPressed: () {
+                                    _uriFieldFocusNode.unfocus();
+                                    _uriFieldFocusNode.canRequestFocus = false;
+                                    if (refreshOrGo) {
+                                      _load();
+                                    } else {
+                                      _go(_urlController.text);
+                                    }
+
+                                    Future.delayed(
+                                      Duration(milliseconds: 100),
+                                      () {
+                                        _uriFieldFocusNode.canRequestFocus =
+                                            true;
+                                      },
+                                    );
+                                  },
+                                ),
+                        ),
+                        onSubmitted: _go,
+                        focusNode: _uriFieldFocusNode,
+                      ),
                     ),
                   ],
                 ),
               ),
               Expanded(
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: EdgeInsets.all(5),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: geminiTexts,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    // _urlController.text += "1";
+                    FocusScopeNode currentFocus = FocusScope.of(context);
+                    if (!currentFocus.hasPrimaryFocus) {
+                      currentFocus.unfocus();
+                    }
+                  },
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: EdgeInsets.all(5),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: geminiTexts,
+                      ),
                     ),
+                    scrollDirection: Axis.vertical,
                   ),
-                  scrollDirection: Axis.vertical,
                 ),
               ),
               Padding(
