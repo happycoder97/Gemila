@@ -9,10 +9,13 @@ abstract class GeminiItem {
 
 class GeminiH1 implements GeminiItem {
   String value;
-  static GeminiH1 tryParse(String rawValue) {
+
+  GeminiH1(this.value);
+
+  static GeminiH1? tryParse(String rawValue) {
     if (rawValue.startsWith("#")) {
-      GeminiH1 h1 = GeminiH1();
-      h1.value = rawValue.substring(1).trim();
+      String value = rawValue.substring(1).trim();
+      GeminiH1 h1 = GeminiH1(value);
       return h1;
     }
     return null;
@@ -32,10 +35,13 @@ class GeminiH1 implements GeminiItem {
 
 class GeminiH2 implements GeminiItem {
   String value;
-  static GeminiH2 tryParse(String rawValue) {
+
+  GeminiH2(this.value);
+
+  static GeminiH2? tryParse(String rawValue) {
     if (rawValue.startsWith("##")) {
-      GeminiH2 h2 = GeminiH2();
-      h2.value = rawValue.substring(2).trim();
+      String value = rawValue.substring(2).trim();
+      GeminiH2 h2 = GeminiH2(value);
       return h2;
     }
     return null;
@@ -55,10 +61,13 @@ class GeminiH2 implements GeminiItem {
 
 class GeminiH3 implements GeminiItem {
   String value;
-  static GeminiH3 tryParse(String rawValue) {
+
+  GeminiH3(this.value);
+
+  static GeminiH3? tryParse(String rawValue) {
     if (rawValue.startsWith("###")) {
-      GeminiH3 h3 = GeminiH3();
-      h3.value = rawValue.substring(3).trim();
+      String value = rawValue.substring(3).trim();
+      GeminiH3 h3 = GeminiH3(value);
       return h3;
     }
     return null;
@@ -78,10 +87,13 @@ class GeminiH3 implements GeminiItem {
 
 class GeminiListItem implements GeminiItem {
   String value;
-  static GeminiListItem tryParse(String rawValue) {
+
+  GeminiListItem(this.value);
+
+  static GeminiListItem? tryParse(String rawValue) {
     if (rawValue.startsWith("* ")) {
-      GeminiListItem g = GeminiListItem();
-      g.value = rawValue.substring(1).trim();
+      String value = rawValue.substring(1).trim();
+      GeminiListItem g = GeminiListItem(value);
       return g;
     }
     return null;
@@ -100,20 +112,24 @@ class GeminiLink implements GeminiItem {
   String text;
   void Function(String) handler;
 
-  static GeminiLink tryParse(
+  GeminiLink(this.link, this.text, this.handler);
+
+  static GeminiLink? tryParse(
       String rawValue, void Function(String link) linkHandler) {
     if (rawValue.startsWith("=>")) {
-      GeminiLink g = GeminiLink();
-      g.handler = linkHandler;
       final value = rawValue.substring(2).trim();
       final spIdx = value.indexOf(RegExp(r"\s+"));
+      String link;
+      String text;
       if (spIdx >= 0) {
-        g.link = value.substring(0, spIdx);
-        g.text = value.substring(spIdx + 1).trim();
+        link = value.substring(0, spIdx);
+        text = value.substring(spIdx + 1).trim();
       } else {
-        g.link = value;
-        g.text = value;
+        link = value;
+        text = value;
       }
+
+      GeminiLink g = GeminiLink(link, text, linkHandler);
       return g;
     }
     return null;
@@ -128,7 +144,8 @@ class GeminiLinkWidget extends StatefulWidget {
   final String text;
   final void Function(String) handler;
 
-  const GeminiLinkWidget({Key key, this.link, this.text, this.handler})
+  const GeminiLinkWidget(
+      {Key? key, required this.link, required this.text, required this.handler})
       : super(key: key);
 
   @override
@@ -188,9 +205,11 @@ class _GeminiLinkWidgetState extends State<GeminiLinkWidget> {
 
 class GeminiText implements GeminiItem {
   String value;
+
+  GeminiText(this.value);
+
   static GeminiText tryParse(String rawValue) {
-    GeminiText g = GeminiText();
-    g.value = rawValue;
+    GeminiText g = GeminiText(rawValue);
     return g;
   }
 
@@ -236,10 +255,11 @@ class GeminiPre implements GeminiItem {
 
 class GeminiQuote implements GeminiItem {
   String value;
-  static GeminiQuote tryParse(String rawValue) {
+  GeminiQuote(this.value);
+  static GeminiQuote? tryParse(String rawValue) {
     if (rawValue.startsWith(">")) {
-      GeminiQuote g = GeminiQuote();
-      g.value = rawValue.substring(1).trim();
+      String value = rawValue.substring(1).trim();
+      GeminiQuote g = GeminiQuote(value);
       return g;
     }
     return null;

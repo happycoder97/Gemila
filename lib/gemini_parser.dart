@@ -6,7 +6,7 @@ class GeminiParser {
     void Function(GeminiItem item) itemCallback,
     void Function(String link) linkHandler,
   ) {
-    GeminiItem item;
+    GeminiItem? item;
     for (final line in lines) {
       if (!(item is GeminiPre) && GeminiPre.matchOpening(line)) {
         item = GeminiPre([]);
@@ -18,7 +18,7 @@ class GeminiParser {
           item = null;
           continue;
         }
-        (item as GeminiPre).lines.add(line);
+        item.lines.add(line);
         continue;
       }
 
@@ -29,7 +29,7 @@ class GeminiParser {
           continue;
         }
       } else {
-        if ((item as GeminiQuote).tryParseAndAppend(line)) {
+        if (item.tryParseAndAppend(line)) {
           continue;
         }
       }
@@ -74,10 +74,7 @@ class GeminiParser {
       }
 
       item = GeminiText.tryParse(line);
-      if (item != null) {
-        itemCallback(item);
-        continue;
-      }
+      itemCallback(item);
     }
   }
 }

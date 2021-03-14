@@ -13,10 +13,10 @@ import 'gemini_parser.dart';
 class GeminiBrowser {
   String _status = "";
   String _respStatus = "";
-  List<GeminiItem> _content;
+  List<GeminiItem>? _content;
 
   List<Uri> _uriStack = [];
-  Uri _pageUri;
+  Uri? _pageUri;
   int _redirectCount = 0;
 
   final void Function(void Function() upd) setState;
@@ -26,7 +26,7 @@ class GeminiBrowser {
 
   void _pushToUriStack(Uri uri) {
     if (!uri.isAbsolute) {
-      uri = _pageUri.resolveUri(uri);
+      uri = _pageUri!.resolveUri(uri);
     }
     _uriStack.add(uri);
   }
@@ -37,17 +37,17 @@ class GeminiBrowser {
     });
   }
 
-  Uri getUri() {
+  Uri? getUri() {
     if (_pageUri == null) return null;
 
-    Uri uriWithoutPort = _pageUri;
-    if (_pageUri.isScheme("gemini") && _pageUri.port == 1965) {
-      uriWithoutPort = _pageUri.replace(port: null);
+    Uri uriWithoutPort = _pageUri!;
+    if (_pageUri!.isScheme("gemini") && _pageUri!.port == 1965) {
+      uriWithoutPort = _pageUri!.replace(port: null);
     }
     return uriWithoutPort;
   }
 
-  List<GeminiItem> getContent() => _content;
+  List<GeminiItem>? getContent() => _content;
 
   String getStatus() => _status;
   String getRespStatus() => _respStatus;
@@ -74,7 +74,7 @@ class GeminiBrowser {
 
     setState(() {
       _pageUri = uri;
-      onUriChange(getUri());
+      onUriChange(uri);
     });
 
     if (!uri.isScheme("gemini")) {
@@ -138,7 +138,7 @@ class GeminiBrowser {
     });
 
     _setStatus("Rendering..");
-    GeminiParser().parse(lines, (item) => _content.add(item), open);
+    GeminiParser().parse(lines, (item) => _content!.add(item), open);
 
     _setStatus("Loaded.");
     socket.close();
