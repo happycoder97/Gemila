@@ -130,7 +130,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           _uriFieldFocusNode.unfocus();
                           _uriFieldFocusNode.canRequestFocus = false;
                           if (refreshOrGo) {
-                            _browser.load();
+                            _browser.refresh();
                           } else {
                             _browser.open(_urlController.text);
                           }
@@ -152,7 +152,7 @@ class _MyHomePageState extends State<MyHomePage> {
     );
 
     final _status = _browser.getStatus();
-    final _respStatus = _browser.getRespStatus();
+    final _statusCode = _browser.getStatusCode();
     return WillPopScope(
       onWillPop: _handleBackButton,
       child: Scaffold(
@@ -189,7 +189,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 padding: EdgeInsets.all(5),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [Text('$_status'), Text('$_respStatus')],
+                  children: [Text('$_status'), Text('$_statusCode')],
                 ),
               ),
             ],

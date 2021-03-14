@@ -4,85 +4,95 @@ import 'dart:io';
 import 'gemini.dart';
 import 'gemini_parser.dart';
 
-/* WIP Refactor: 
- * Moved non rendering stuff to this class.
- * Figure out how readonly variables work in Dart and 
- * remove getters and make the fields public.
- */
+Uri canonicalizeUri(Uri uri) {
+  // if no scheme, default to gemini
+  if (!uri.hasScheme) uri = uri.replace(scheme: "gemini");
+  if (!uri.hasPort) uri = uri.replace(port: 1965);
+
+  return uri;
+}
+
+class MultiOp {
+  int _opIdx = 0;
+
+  int newOp() {
+    _opIdx++;
+    return _opIdx;
+  }
+
+  bool isOpStale(int opIdx) {
+    return _opIdx != opIdx;
+  }
+
+  void opComplete() {
+    _opIdx = 0;
+  }
+
+  bool isRunning() {
+    return _opIdx > 0;
+  }
+}
 
 class GeminiBrowser {
   String _status = "";
-  String _respStatus = "";
-  List<GeminiItem>? _content;
-
+  String _statusCode = "";
+  List<GeminiItem> _content = [];
   List<Uri> _uriStack = [];
-  Uri? _pageUri;
   int _redirectCount = 0;
+
+  MultiOp loadOp = MultiOp();
 
   final void Function(void Function() upd) setState;
   final void Function(Uri uri) onUriChange;
 
   GeminiBrowser(this.setState, this.onUriChange);
 
-  void _pushToUriStack(Uri uri) {
-    if (!uri.isAbsolute) {
-      uri = _pageUri!.resolveUri(uri);
-    }
-    _uriStack.add(uri);
-  }
-
-  void _setStatus(String status) {
-    setState(() {
-      _status = status;
-    });
-  }
-
   Uri? getUri() {
-    if (_pageUri == null) return null;
-
-    Uri uriWithoutPort = _pageUri!;
-    if (_pageUri!.isScheme("gemini") && _pageUri!.port == 1965) {
-      uriWithoutPort = _pageUri!.replace(port: null);
-    }
-    return uriWithoutPort;
+    if (_uriStack.isNotEmpty) return _uriStack.first;
+    return null;
   }
 
   List<GeminiItem>? getContent() => _content;
-
   String getStatus() => _status;
-  String getRespStatus() => _respStatus;
+  String getStatusCode() => _statusCode;
+
+  void _addUriToStack(Uri uri) {
+    if (loadOp.isRunning()) {
+      _uriStack[_uriStack.length - 1] = uri;
+    } else {
+      _uriStack.add(uri);
+    }
+  }
 
   void open(String uriText) async {
     Uri uri = Uri.parse(uriText);
-    _pushToUriStack(uri);
-    load();
+    uri = canonicalizeUri(uri);
+    if (!uri.isScheme("gemini")) {
+      setState(() {
+        _status = "Cannot load non gemini URLs.";
+      });
+      return;
+    }
+    _addUriToStack(uri);
+    onUriChange(uri);
+    _load(uri);
   }
 
-  void load() async {
-    if (_uriStack.length < 1) {
-      _setStatus("No URL to load.");
-      return;
+  void refresh() async {
+    Uri? uri = getUri();
+    if (uri != null) {
+      _load(uri);
     }
+  }
+
+  void _load(Uri uri) async {
+    final opIdx = loadOp.newOp();
 
     setState(() {
-      _respStatus = "";
+      _statusCode = "";
+      _status = "Connecting";
+      _content = [];
     });
-
-    Uri uri = _uriStack.last;
-    _setStatus("Connecting..");
-    if (!uri.hasScheme) uri = uri.replace(scheme: "gemini");
-
-    setState(() {
-      _pageUri = uri;
-      onUriChange(uri);
-    });
-
-    if (!uri.isScheme("gemini")) {
-      _setStatus("Cannot load non gemini URLs.");
-      _uriStack.removeLast();
-      return;
-    }
-    if (!uri.hasPort) uri = uri.replace(port: 1965);
 
     final socket = await SecureSocket.connect(
       uri.host,
@@ -93,62 +103,77 @@ class GeminiBrowser {
       },
     );
 
-    _setStatus("Sending request..");
+    if (loadOp.isOpStale(opIdx)) return;
+    setState(() {
+      _status = "Sending request";
+    });
     socket.write(uri.toString() + "\r\n");
 
-    _setStatus("Receiving data..");
+    if (loadOp.isOpStale(opIdx)) return;
+    setState(() {
+      _status = "Receiving data";
+    });
     List<int> buffer = [];
     await for (var b in socket) {
       buffer.addAll(b);
     }
+    socket.close();
 
-    _setStatus("Decoding utf8..");
+    if (loadOp.isOpStale(opIdx)) return;
+
     String s = utf8.decode(buffer, allowMalformed: true);
-
-    setState(() {
-      _content = [];
-    });
     final lines = s.split("\n");
-
-    final respStatus = lines.removeAt(0);
-    if (respStatus.startsWith("3")) {
+    final statusCode = lines.removeAt(0);
+    if (statusCode.startsWith("3")) {
       if (_redirectCount > 5) {
-        _setStatus("Redirect limit reached.");
+        setState(() {
+          _status = "Redirect limit reached.";
+        });
+        loadOp.opComplete();
         return;
       }
-      _redirectCount += 1;
-      _status = "Redirecting.. ($_redirectCount)";
 
-      List<String> statusComponents = respStatus.split(RegExp(r"\s+"));
+      List<String> statusComponents = statusCode.split(RegExp(r"\s+"));
       print(statusComponents);
       String uriStr = statusComponents[1];
       Uri uri = Uri.parse(uriStr);
 
-      _uriStack.removeLast();
-      _pushToUriStack(uri);
+      _redirectCount += 1;
 
-      load();
+      _load(uri);
       return;
     }
+
     _redirectCount = 0;
 
     setState(() {
-      _respStatus = respStatus;
-      _pageUri = uri;
+      _statusCode = statusCode;
+      _status = "Rendering";
     });
 
-    _setStatus("Rendering..");
-    GeminiParser().parse(lines, (item) => _content!.add(item), open);
+    GeminiParser().parse(
+      lines,
+      (item) {
+        setState(() {
+          _content.add(item);
+        });
+      },
+      open,
+    );
 
-    _setStatus("Loaded.");
-    socket.close();
+    setState(() {
+      _status = "Loaded.";
+    });
+
+    loadOp.opComplete();
   }
 
   // Return whether back action succeeded.
   bool back() {
     if (_uriStack.length <= 1) return false;
     _uriStack.removeLast();
-    load();
+    onUriChange(_uriStack.last);
+    _load(_uriStack.last);
     return true;
   }
 }
