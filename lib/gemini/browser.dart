@@ -12,27 +12,6 @@ Uri canonicalizeUri(Uri uri) {
   return uri;
 }
 
-class MultiOp {
-  int _opIdx = 0;
-
-  int newOp() {
-    _opIdx++;
-    return _opIdx;
-  }
-
-  bool isOpStale(int opIdx) {
-    return _opIdx != opIdx;
-  }
-
-  void opComplete() {
-    _opIdx = 0;
-  }
-
-  bool isRunning() {
-    return _opIdx > 0;
-  }
-}
-
 class GeminiBrowser {
   String _status = "";
   String _statusCode = "";
@@ -40,12 +19,17 @@ class GeminiBrowser {
   List<Uri> _uriStack = [];
   int _redirectCount = 0;
 
-  MultiOp loadOp = MultiOp();
+  // ignore: close_sinks
+  Socket? _loadSocket;
 
   final void Function(void Function() upd) setState;
   final void Function(Uri uri) onUriChange;
 
   GeminiBrowser(this.setState, this.onUriChange);
+
+  void dispose() {
+    if (_loadSocket != null) _loadSocket!.close();
+  }
 
   Uri? getUri() {
     if (_uriStack.isNotEmpty) return _uriStack.first;
@@ -56,14 +40,6 @@ class GeminiBrowser {
   String getStatus() => _status;
   String getStatusCode() => _statusCode;
 
-  void _addUriToStack(Uri uri) {
-    if (loadOp.isRunning()) {
-      _uriStack[_uriStack.length - 1] = uri;
-    } else {
-      _uriStack.add(uri);
-    }
-  }
-
   void open(String uriText) async {
     Uri uri = Uri.parse(uriText);
     uri = canonicalizeUri(uri);
@@ -73,8 +49,15 @@ class GeminiBrowser {
       });
       return;
     }
-    _addUriToStack(uri);
+
+    if (_loadSocket != null) {
+      _uriStack[_uriStack.length - 1] = uri;
+    } else {
+      _uriStack.add(uri);
+    }
+
     onUriChange(uri);
+
     _load(uri);
   }
 
@@ -86,7 +69,9 @@ class GeminiBrowser {
   }
 
   void _load(Uri uri) async {
-    final opIdx = loadOp.newOp();
+    if (_loadSocket != null) {
+      _loadSocket!.destroy();
+    }
 
     setState(() {
       _statusCode = "";
@@ -94,7 +79,7 @@ class GeminiBrowser {
       _content = [];
     });
 
-    final socket = await SecureSocket.connect(
+    _loadSocket = await SecureSocket.connect(
       uri.host,
       uri.port,
       // TODO implement TOFU
@@ -103,23 +88,21 @@ class GeminiBrowser {
       },
     );
 
-    if (loadOp.isOpStale(opIdx)) return;
     setState(() {
       _status = "Sending request";
     });
-    socket.write(uri.toString() + "\r\n");
+    _loadSocket!.write(uri.toString() + "\r\n");
 
-    if (loadOp.isOpStale(opIdx)) return;
     setState(() {
       _status = "Receiving data";
     });
     List<int> buffer = [];
-    await for (var b in socket) {
+    await for (var b in _loadSocket!) {
       buffer.addAll(b);
     }
-    socket.close();
-
-    if (loadOp.isOpStale(opIdx)) return;
+    _loadSocket!.close();
+    _loadSocket!.destroy();
+    _loadSocket = null;
 
     String s = utf8.decode(buffer, allowMalformed: true);
     final lines = s.split("\n");
@@ -129,7 +112,6 @@ class GeminiBrowser {
         setState(() {
           _status = "Redirect limit reached.";
         });
-        loadOp.opComplete();
         return;
       }
 
@@ -141,7 +123,6 @@ class GeminiBrowser {
       _redirectCount += 1;
 
       _load(uri);
-      return;
     }
 
     _redirectCount = 0;
@@ -164,8 +145,6 @@ class GeminiBrowser {
     setState(() {
       _status = "Loaded.";
     });
-
-    loadOp.opComplete();
   }
 
   // Return whether back action succeeded.
