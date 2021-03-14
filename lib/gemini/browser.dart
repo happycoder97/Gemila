@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'gemini.dart';
-import 'gemini_parser.dart';
+import 'parser.dart';
 
 Uri canonicalizeUri(Uri uri) {
   // if no scheme, default to gemini

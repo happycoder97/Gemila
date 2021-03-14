@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'gemini_browser.dart';
+import 'gemini/browser.dart';
+import 'gemini/renderer.dart';
+import 'renderer/plain.dart';
 
 void main() {
   runApp(MyApp());
@@ -45,6 +47,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   late FocusNode _uriFieldFocusNode;
   bool _isUriFieldFocused = false;
+  final GeminiRenderer renderer = PlainRenderer();
 
   @override
   void initState() {
@@ -92,7 +95,7 @@ class _MyHomePageState extends State<MyHomePage> {
       geminiTexts = [Text("No page loaded")];
     } else {
       geminiTexts = _content
-          .map((geminiItem) => geminiItem.toWidget())
+          .map((geminiItem) => renderer.render(geminiItem))
           .toList(growable: false);
     }
 
